@@ -1,0 +1,30 @@
+services:
+  postgres_db:
+    image: postgres:15.3-bullseye
+    container_name: postgres_db
+    restart: always
+    environment:
+      - POSTGRES_DB=ai_guide
+      - POSTGRES_PASSWORD=123
+      - POSTGRES_NAME=postgres
+    env_file:
+      - .env
+    ports:
+      - "5433:5432"
+    volumes:
+      - /postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: telegram_bot
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - ./hf_model:/app/hf_model
+    depends_on:
+      - postgres_db
+    restart: always

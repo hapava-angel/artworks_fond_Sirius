@@ -1,0 +1,6 @@
+2025-04-03 15:26:17,727 [DEBUG] Using selector: EpollSelector
+2025-04-03 15:26:17,728 [INFO] Start polling
+2025-04-03 15:26:18,010 [INFO] Run polling for bot @sirius_ai_guide_bot id=7844307326 - 'Выставочный фонд ОЦ «Сириус»'
+2025-04-03 15:26:39,395 [WARNING] Received SIGINT signal
+2025-04-03 15:26:39,395 [INFO] Polling stopped for bot @sirius_ai_guide_bot id=7844307326 - 'Выставочный фонд ОЦ «Сириус»'
+2025-04-03 15:26:39,395 [INFO] Polling stopped

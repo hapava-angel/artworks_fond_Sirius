@@ -1,0 +1,16 @@
+aiogram
+langchain==0.3.18
+langchain-community   
+langchain-gigachat 
+langchain-core
+sentence-transformers 
+faiss-cpu
+datasets
+numpy
+scikit-learn
+python-dotenv
+pandas
+torch
+transformers
+gTTS
+psycopg2-binary
