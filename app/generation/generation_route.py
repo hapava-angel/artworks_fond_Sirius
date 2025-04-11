@@ -9,7 +9,7 @@ load_dotenv()
 gigachat_token = os.getenv("GIGACHAT_TOKEN")
 
 giga = GigaChat(credentials=gigachat_token,
-                model='GigaChat-2', 
+                model='GigaChat-2-Pro', 
                 scope="GIGACHAT_API_CORP",
                 verify_ssl_certs=False)
 
@@ -24,6 +24,7 @@ SYS_PROMPT = """You are a museum guide who creates personalized tours for visito
         - If the user description is for a child, add a sense of fantasy and avoid complex terms. If the user description is about an art expert, speak to them as a connoisseur. Adapt to other user categories as well.
         - The response must be presented as a clearly formatted numbered list (1., 2., 3., etc.).
         - Each artwork description must start on a new line with a line break separating artworks.
+        - **Each artwork from the k given artworks MUST be included in the tour.**
         - Each artwork should be presented in a way that connects with the user's interests.
         - Avoid dry facts – write like a lively guide telling an interesting story.
         - Make sure that the text is clean and structured as a list.
@@ -32,9 +33,10 @@ SYS_PROMPT = """You are a museum guide who creates personalized tours for visito
         - Each artwork must begin with a number (1., 2., 3.)
         - Each artwork must be separated by a new line
         - AVOID merging multiple artworks into one paragraph
+        - All artworks must be included in the tour, and no artwork should be left out.
 
 
-    Example of a created response 1:
+    Example of a created response 1 with k=4 resived artworks:
 
         Если вы хотите насладиться красотой природы и пейзажей, я подготовил для вас такой маршрут:
 
@@ -49,7 +51,7 @@ SYS_PROMPT = """You are a museum guide who creates personalized tours for visito
 
         4. Палех. Этюды для картины "Моя родина", Павел Коровин. Эта работа представляет собой серию этюдов, написанных художником в Палехе, которые стали основой для создания его знаменитой картины "Моя Родина".
 
-    Example of a created response for a kid:
+    Example of a created response for a kid with k=3 resived artworks:
 
         Привет! Я приготовил для тебя суперинтересную экскурсию по музею, где ты увидишь много интересных картин, полных приключений и загадок! Давай посмотрим, что мы сегодня увидим:
 
@@ -60,9 +62,6 @@ SYS_PROMPT = """You are a museum guide who creates personalized tours for visito
         
 
         3. Дубы и платаны. Фраскати, Николай Ге. Здесь ты увидишь старые деревья — дубы и платаны, которые растут в городе Фраскати. Вокруг них красивые луга и ромашки, и ты можешь представить, что прогуливаешься среди них, как герои в книгах о приключениях.
-        
-
-        4. Палех. Этюды для картины "Моя родина", Павел Коровин. На этой картине ты увидишь маленькие рисунки, которые художник рисовал, чтобы потом создать настоящую картину. Это как если бы ты рисовал свой собственный мир — и каждый рисунок полон истории и чувств.
 
 """
 prompt_template = ChatPromptTemplate([
@@ -76,15 +75,14 @@ def format_prompt( retrieved_documents, k, user_query=None, description_field='f
         user_content += f"User query: {user_query}\n"
     user_content += f"Экспонаты для маршрута:\n"
     for i in range(k):
-        user_content += f"{i + 1}. {retrieved_documents.get(description_field)}\n"
+        user_content += f"{i + 1}. {retrieved_documents.get(description_field)[i]}\n"
     return user_content
     
-    
-
 def generate_route(k, user_description, user_query):
     scores, retrieved_documents = search(user_query, k)
 
     formatted_artworks = format_prompt(retrieved_documents, k, user_query)
+    print(formatted_artworks)
 
     chain = prompt_template | giga
     response = chain.invoke({
@@ -105,22 +103,16 @@ def generate_route(k, user_description, user_query):
 
     if len(response.content) < 350:
         print("The BLACKLIST problem. Sending the list of formatted descriptions.")
-        user_content = f"Список экспонатов:\n"
-        for i in range(k):
-            user_content += f"{i + 1}. {clean_text(retrieved_documents[i]['text'])}\n\n"
-        response = user_content
+        response = formatted_prompt
 
     description_field = 'text' if len(response.content) < 350 else 'full_description'
 
     artworks = [
         {
-            "text": retrieved_documents.get(description_field)[i],
-            "image": retrieved_documents['image'][i]
+            "text": retrieved_documents.get(description_field, '')[i],
+            "image": retrieved_documents.get("image", '')[i]
         }
-        
         for i in range(k)
-
     ]
-    print(artworks)
     return response.content if hasattr(response, 'content') else str(response), artworks
 

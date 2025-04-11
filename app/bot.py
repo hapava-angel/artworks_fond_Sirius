@@ -1,10 +1,8 @@
 import os
 import asyncio
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
-from aiogram.types import ReplyKeyboardMarkup
+from aiogram import Bot, Dispatcher, F, types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup
 from dotenv import load_dotenv
 import random
 import re
@@ -40,25 +38,24 @@ def create_keyboard(buttons):
         keyboard.button(text=text, callback_data=data)
     return keyboard.as_markup()
 
-@dp.message(Command("start"))
+@dp.message(F.text == "/start")
+@dp.message(F.text == "Старт")
 async def start(message: Message):
     user_data[message.from_user.id] = {'state': 'route_mode', 'current_artwork_index': 0, 'last_shown_artwork_index': 0}
-    
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[types.KeyboardButton(text="Старт")]],
-        resize_keyboard=True, one_time_keyboard=True
-    )
-
+    keyboard = ReplyKeyboardMarkup(keyboard=[[types.KeyboardButton(text="Старт")]], resize_keyboard=True, one_time_keyboard=True)
     await message.answer(
-        "Привет! 👋 Я твой гид по виртуальному выставочному фонду ОЦ «Сириус». Моя цель — рассказать об экспонатах и истории, которые делают каждую выставку уникальной.\n"
+        "Привет! 👋 Я — твой персональный гид по виртуальному выставочному фонду ОЦ «Сириус».\n"
         "\n"
-        "Но сначала давай познакомимся! Расскажи немного о себе: сколько тебе лет, чем ты увлекаешься? "
-        "Что тебя привело в наше пространство — ты здесь ради вдохновения, учебы или просто решил(а) интересно провести время? "
-        "Чем больше я о тебе узнаю, тем более персонализированной будет твоя экскурсия! 😊", 
-        reply_markup=keyboard
-    )
+        "Я создан на базе модели GigaChat — это значит, что я умею подстраиваться под твои интересы и вести настоящую живую беседу 🤖✨\n"
+        "\n"
+        "Давай немного познакомимся:\n"
+        "🧠 Сколько тебе лет?\n"
+        "🎨 Чем ты увлекаешься?\n"
+        "💡 Что привело тебя сюда: учеба, вдохновение или просто любопытство?\n"
+        "\n"
+        "Напиши в ответ немного о себе — это поможет мне составить маршрут, который подойдёт именно тебе 😊", 
+        reply_markup=keyboard)
     user_data[message.from_user.id]['state'] = 'awaiting_description'
-
 
 @dp.message()
 async def handle_user_input(message: Message):
@@ -76,7 +73,9 @@ async def handle_user_input(message: Message):
         ])
 
         await message.answer(
-            "Я очень рад с вами познакомиться! Теперь выберите продолжительность экскурсии:",
+            "Я очень рад с вами познакомиться!🙌\n"
+            "\n"
+            "Выберите продолжительность маршрута:",
             reply_markup=keyboard
         )
 
@@ -125,7 +124,12 @@ async def handle_tour_length(callback: CallbackQuery):
     
     user_data[user_id]['state'] = 'route_mode'
 
-    await callback.message.answer("Что бы вы хотели посмотреть в музее сегодня?")
+    await callback.message.answer(
+        "А теперь расскажи, что тебе интересно посмотреть.\n"
+        "Ты можешь просто описать тему, настроение или даже конкретные типы работ, которые хочешь увидеть (например, *яркие картины*, *что-то про природу*, *современное искусство*).\n"
+        "\n"
+        "📌 Чем точнее ты сформулируешь интерес — тем точнее будет маршрут!"
+    )
 
 
 async def process_question(message: Message):
@@ -151,6 +155,14 @@ async def process_question(message: Message):
             await message.answer(answer_max)  
         else: 
             await message.answer("К сожалению, я затрудняюсь ответить. Пожалуйста перефразируйте ваш вопрос.")
+    current_artwork_index = user_data[user_id]['current_artwork_index']
+
+    if current_artwork_index < len(user_data[user_id]['artworks']):
+        keyboard = create_keyboard([("Следующий экспонат", "next_artwork")])
+        await message.answer("Вы можете задать ещё вопросы или перейти к следующему экспонату", reply_markup=keyboard)
+    else:
+        keyboard = create_keyboard([("Завершить маршрут", "end_tour")])
+        await message.answer("Вы можете задать ещё вопросы. Это последний экспонат!", reply_markup=keyboard)
 
 
 async def next_artwork(callback: CallbackQuery):
